@@ -1,0 +1,254 @@
+<!-- I didn't split the HTML, CSS and JS into seperate files cause I didn't want to have to make more routes on the backend -->
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Image to ASCII Art Converter</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta charset="utf-8">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@500&family=Montserrat&display=swap" rel="stylesheet">
+
+        <meta name="Description" content="Converts an image (.jpg, .png, etc) into ASCII (text) art">
+
+        <meta property="og:site_name" content="FalconCA">
+        <meta property="og:url" content="https://asciify.falconca.ca">
+        <meta property="og:title" content="Image to ASCII Art">
+        <meta property="og:description" content="Converts an image (.jpg, .png, etc) into ASCII (text) art">
+        <meta property="og:type" content="website">
+        <meta name="theme-color" content="#0096FF">
+    </head>
+
+    <body>
+        <div id="mainBox">
+            <div id="innerMargin">
+                <h1>Image to ASCII Art</h1>
+                <h3>Instructions</h3>
+                <ol>
+                    <li>Enter the image file to convert</li>
+                    <li>Press the convert button</li>
+                    <li>Download the conversion_result.txt file</li>
+                </ol>
+
+                <div id="submitInformation">
+                    <form id="mainForm" action="/convert" method="POST" enctype="multipart/form-data">
+                        <input id="Image-File" name="Image-File" type="file">
+
+                        <h4 onclick="advancedOptions()">Advanced Options<span id="advDots">...</span></h4>
+                        <div id="advanced">
+                            <p class="advOptionLabel">Scaling Ratios</p>
+                            <input autocomplete="off" id="Adv-X-Ratio" name="Adv-X-Ratio" placeholder="XSR" type="text">
+                            <input autocomplete="off" id="Adv-Y-Ratio" name="Adv-Y-Ratio" placeholder="YSR" type="text">
+
+                            <p class="advOptionLabel">Reverse brightness scale</p>
+                            <input name="Rev-Bright" type="checkbox">
+
+                            <p class="advOptionLabel">Sharpness Factor</p>
+                            <input autocomplete="off" id="Sharp-Factor" name="Sharp-Factor" placeholder="Factor" type="text">
+                        </div>
+                    </form>
+
+                    <p class="failedText" id="ft1">XSR and YSR must both be decimal values</p>
+                    <p class="failedText" id="ft2">XSR and YSR must both be >=1</p>
+                    <p class="failedText" id="ft3">No file given</p>
+                    <p class="failedText" id="ft4">File too big (8MB max)</p>
+                    <p class="failedText" id="ft5">Sharpness factor must be a decimal value between 1 and 2</p>
+
+                    <button onclick="convertClick()">Convert</button>
+                </div>
+            </div>
+        </div>
+    </body>
+
+    <style>
+        body {
+            align-items: center;
+            display: flex;
+            font-family: 'Dosis', sans-serif;
+            justify-content: center;
+            margin: 15px;
+            padding: 0;
+        }
+
+        h1 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 30px;
+            margin: 15px auto 23px auto;
+            text-align: center;
+        }
+
+        h3 {
+            color: #656565;
+            font-size: 20px;
+            margin: 5px 0 0 15px;
+        }
+
+        h4 {
+            color: #656565;
+            margin: 5px 0 5px 10px;
+            transition-duration: 0.1s;
+            user-select: none;
+        }
+        h4:hover {
+            color: black;
+            cursor: pointer;
+        }
+
+        ol {
+            color: #656565;
+            font-size: 18px;
+            list-style-type: decimal;
+            margin: 0;
+        }
+
+        input[type=text] {
+            color: #656565;
+            border: 1px solid #949494;
+            border-radius: 5px;
+            font-size: 15px;
+            height: 40px;
+            margin: 5px auto 5px auto;
+            width: 100%;
+        }
+        input[type=checkbox] {
+            width: 25px;
+            height: 25px;
+        }
+
+        button {
+            background-color: #105EC7;
+            border: none;
+            border-radius: 15px;
+            color: white;
+            font-size: 23px;
+            height: 50px;
+            margin: 23px auto 0 auto;
+            transition-duration: 0.2s;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #2075E8;
+            cursor: pointer;
+        }
+
+        .advOptionLabel {
+            margin: 7px 0 4px 0;
+        }
+
+        .failedText {
+            color: red;
+            display: none;
+            font-size: 15px;
+            margin: 2px 0 0 0;
+        }
+
+        #advanced {
+            display: none;
+        }
+
+        @media only screen and (min-width: 1000px) {
+            #mainBox {
+                border: 1px solid #949494;
+                border-radius: 10px;
+                min-height: 400px;
+                width: 35%;
+            }
+            #innerMargin {
+                margin: 30px;
+            }
+            #submitInformation {
+                margin: 40px;
+            }
+        }
+        @media only screen and (max-width: 1000px) {
+            h4 {
+                display: none;
+            }
+            #mainBox {
+                width: 95%;
+            }
+            #innerMargin {
+                margin: 20px;
+            }
+        }
+    </style>
+
+    <script>
+        function convertClick() {
+            resetViews();
+            const advVerification = verifyAdvancedOptions();
+            const fileVerification = verifyGivenFile();
+            if (advVerification && fileVerification) {
+                document.getElementById("mainForm").submit();
+            }
+        }
+
+        function resetViews() {
+            for (const elem of document.getElementsByClassName("failedText")) {
+                elem.style.display = "none";
+            }
+        }
+
+        function verifyAdvancedOptions() {
+            const xsrRaw = document.getElementById("Adv-X-Ratio").value.trim();
+            if (xsrRaw.length !== 0) {
+                const xsr = parseFloat(xsrRaw);
+                if (!xsr) {
+                    document.getElementById("ft1").style.display = "block";
+                    return false;
+                }
+                if (xsr < 1) {
+                    document.getElementById("ft2").style.display = "block";
+                    return false;
+                }
+            }
+            const ysrRaw = document.getElementById("Adv-Y-Ratio").value.trim();
+            if (ysrRaw.length !== 0) {
+                const ysr = parseFloat(ysrRaw);
+                if (!ysr) {
+                    document.getElementById("ft1").style.display = "block";
+                    return false;
+                }
+                if (ysr < 1) {
+                    document.getElementById("ft2").style.display = "block";
+                    return false;
+                }
+            }
+            const sharpRaw = document.getElementById("Sharp-Factor").value.trim();
+            if (sharpRaw.length !== 0) {
+                const sharp = parseFloat(sharpRaw);
+                if (!sharp || sharp < 0 || sharp > 2) {
+                    document.getElementById("ft5").style.display = "block";
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function verifyGivenFile() {
+            const fileInput = document.getElementById("Image-File").files[0];
+            if (!fileInput) {
+                document.getElementById("ft3").style.display = "block";
+                return false;
+            }
+            if (fileInput.size > 8 * 1024 * 1024) {
+                document.getElementById("ft4").style.display = "block";
+                return false;
+            }
+            return true;
+        }
+
+        function advancedOptions() {
+            const elem = document.getElementById("advanced");
+            const elemDots = document.getElementById("advDots");
+            if (elem.style.display === "none") {
+                elem.style.display = "block";
+                elemDots.style.display = "none";
+            } else {
+                elem.style.display = "none";
+                elemDots.style.display = "inline";
+            }
+        }
+    </script>
+</html>
